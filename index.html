@@ -1,11 +1,4 @@
-.gantt-label {
-            padding: 12px;
-            background: #34495e;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.9rem;
-        }<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -300,30 +293,16 @@
             font-weight: 600;
         }
         
-        .gantt-months-container {
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .gantt-months-row {
+        .gantt-months {
             display: grid;
             grid-template-columns: repeat(36, 1fr);
             gap: 1px;
             background: #34495e;
-        }
-        
-        .gantt-months-tens {
-            border-bottom: 1px solid #34495e;
-        }
-        
-        .month-header-tens {
             padding: 6px 2px;
             text-align: center;
-            font-size: 0.7rem;
-            background: #2c3e50;
+            font-size: 0.65rem;
             color: white;
-            font-weight: 600;
-            border-right: 1px solid #34495e;
+            font-weight: 500;
         }
         
         .month-header {
@@ -335,12 +314,20 @@
             font-weight: 500;
         }
         
+        .timeline-title {
+            text-align: center;
+            margin-bottom: 5px;
+            font-size: 1.3rem;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+        
         .timeline-subtitle {
             text-align: center;
             margin-bottom: 15px;
-            font-size: 1rem;
-            color: rgba(255, 255, 255, 0.9);
-            font-weight: 500;
+            font-size: 0.95rem;
+            color: #6c757d;
+            font-weight: 400;
         }
         
         .primary-group {
@@ -423,39 +410,6 @@
             font-size: 0.9rem;
         }
         
-        @media (max-width: 1200px) {
-            .gantt-months-row {
-                grid-template-columns: repeat(24, 1fr);
-            }
-            
-            .month-header, .month-header-tens {
-                font-size: 0.6rem;
-                padding: 4px 1px;
-            }
-        }
-        
-        @media (max-width: 800px) {
-            .gantt-header {
-                grid-template-columns: 120px 1fr;
-            }
-            
-            .gantt-row {
-                grid-template-columns: 120px 1fr;
-            }
-            
-            .gantt-months-row {
-                grid-template-columns: repeat(18, 1fr);
-            }
-            
-            .timeline-subtitle {
-                font-size: 0.9rem;
-            }
-            
-            .analysis-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-        
         .gantt-body {
             background: #ecf0f1;
         }
@@ -525,6 +479,10 @@
             background: linear-gradient(135deg, #27ae60, #229954) !important;
         }
         
+        .gantt-bar.rip-travel {
+            background: linear-gradient(135deg, #8e44ad, #9b59b6) !important;
+        }
+        
         .gantt-bar.failure {
             background: linear-gradient(135deg, #95a5a6, #7f8c8d) !important;
         }
@@ -570,55 +528,13 @@
             border: 1px solid rgba(0, 0, 0, 0.1);
         }
         
-        @media (max-width: 1200px) {
-            .gantt-months {
-                grid-template-columns: repeat(24, 1fr);
-            }
-            
-            .gantt-timeline {
-                grid-template-columns: repeat(24, 1fr);
-            }
-            
-            .month-header {
-                font-size: 0.6rem;
-                padding: 6px 1px;
-            }
-            
-            .gantt-bar {
-                height: 30px;
-                font-size: 0.6rem;
-            }
-        }
-        
-        @media (max-width: 800px) {
-            .gantt-header {
-                grid-template-columns: 120px 1fr;
-            }
-            
-            .gantt-row {
-                grid-template-columns: 120px 1fr;
-            }
-            
-            .gantt-row-label {
-                padding: 8px;
-                font-size: 0.8rem;
-            }
-            
-            .gantt-months {
-                grid-template-columns: repeat(18, 1fr);
-            }
-            
-            .gantt-timeline {
-                grid-template-columns: repeat(18, 1fr);
-            }
-            
-            .gantt-legend {
-                gap: 15px;
-            }
-            
-            .legend-item {
-                font-size: 0.8rem;
-            }
+        .gantt-label {
+            padding: 12px;
+            background: #34495e;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
         }
         
         .recommendations {
@@ -648,80 +564,12 @@
             border-left: 4px solid rgba(255, 255, 255, 0.5);
         }
         
-        .scenario-tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        
-        .tab-btn {
-            padding: 8px 16px;
-            background: #e9ecef;
-            border: none;
-            border-radius: 20px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-        
-        .tab-btn.active {
-            background: #3498db;
-            color: white;
-        }
-        
         .share-section {
             background: linear-gradient(135deg, #a8e6cf, #88d8a3);
             border-radius: 12px;
             padding: 20px;
             margin-top: 20px;
             text-align: center;
-        }
-        
-        .share-url {
-            background: white;
-            padding: 10px;
-            border-radius: 8px;
-            font-family: monospace;
-            word-break: break-all;
-            margin: 10px 0;
-            border: 2px dashed #27ae60;
-        }
-        
-        @media (max-width: 1200px) {
-            .main-layout {
-                grid-template-columns: 350px 1fr;
-            }
-        }
-        
-        @media (max-width: 1000px) {
-            .main-layout {
-                grid-template-columns: 1fr;
-            }
-            
-            .sidebar {
-                border-right: none;
-                border-bottom: 2px solid #dee2e6;
-            }
-            
-            .results-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-        
-        @media (max-width: 600px) {
-            .header h1 {
-                font-size: 2rem;
-            }
-            
-            .timeline-grid {
-                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-            }
-            
-            .export-buttons {
-                grid-template-columns: 1fr;
-            }
         }
         
         .advanced-toggle {
@@ -776,25 +624,119 @@
             font-size: 0.8rem;
             margin-left: 10px;
         }
+        
+        @media (max-width: 1200px) {
+            .gantt-months {
+                grid-template-columns: repeat(24, 1fr);
+            }
+            
+            .gantt-timeline {
+                grid-template-columns: repeat(24, 1fr);
+            }
+            
+            .month-header {
+                font-size: 0.6rem;
+                padding: 4px 1px;
+            }
+            
+            .gantt-bar {
+                height: 30px;
+                font-size: 0.6rem;
+            }
+        }
+        
+        @media (max-width: 800px) {
+            .gantt-header {
+                grid-template-columns: 120px 1fr;
+            }
+            
+            .gantt-row {
+                grid-template-columns: 120px 1fr;
+            }
+            
+            .gantt-row-label {
+                padding: 8px;
+                font-size: 0.8rem;
+            }
+            
+            .gantt-months {
+                grid-template-columns: repeat(18, 1fr);
+            }
+            
+            .gantt-timeline {
+                grid-template-columns: repeat(18, 1fr);
+            }
+            
+            .gantt-legend {
+                gap: 15px;
+            }
+            
+            .legend-item {
+                font-size: 0.8rem;
+            }
+            
+            .timeline-subtitle {
+                font-size: 0.9rem;
+            }
+            
+            .analysis-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 1200px) {
+            .main-layout {
+                grid-template-columns: 350px 1fr;
+            }
+        }
+        
+        @media (max-width: 1000px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                border-right: none;
+                border-bottom: 2px solid #dee2e6;
+            }
+            
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .timeline-grid {
+                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            }
+            
+            .export-buttons {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <div class="header-content">
-                <h1>🎖️ Military Deployment Calculator</h1>
+                <h1>Military Deployment Calculator</h1>
                 <p>Professional feasibility analysis with 2:1 dwell ratio compliance</p>
             </div>
         </div>
         
         <div class="share-info">
-            📤 <strong>Share this tool:</strong> Save this HTML file and share with colleagues, or host on any web server for team access
+            <strong>Share this tool:</strong> Save this HTML file and share with colleagues, or host on any web server for team access
         </div>
         
         <div class="main-layout">
             <div class="sidebar">
                 <h2 class="section-title">
-                    📋 Unit Configuration
+                    Unit Configuration
                 </h2>
                 
                 <div class="input-group">
@@ -834,7 +776,7 @@
                 </div>
                 
                 <div class="advanced-toggle" onclick="toggleAdvanced()">
-                    <strong>⚙️ Advanced Options</strong> <span id="toggle-icon">▼</span>
+                    <strong>Advanced Options</strong> <span id="toggle-icon">▼</span>
                     <div class="advanced-content" id="advanced-content">
                         <div style="margin-top: 15px;">
                             <div class="input-group">
@@ -855,30 +797,30 @@
                 </div>
                 
                 <button class="calculate-btn" onclick="calculateDeployment()">
-                    📊 Calculate Feasibility
+                    Calculate Feasibility
                 </button>
                 
                 <div class="export-buttons">
                     <button class="export-btn" onclick="exportData()">
-                        📄 Export Data
+                        Export Data
                     </button>
                     <button class="export-btn secondary" onclick="shareResults()">
-                        🔗 Share Results
+                        Share Results
                     </button>
                 </div>
                 
                 <div class="share-section">
-                    <h4>📲 Share This Tool</h4>
+                    <h4>Share This Tool</h4>
                     <p style="font-size: 0.9rem; margin: 10px 0;">Send this file to colleagues or host on a web server</p>
                     <button class="export-btn" onclick="saveAsFile()" style="width: 100%; margin-top: 10px;">
-                        💾 Save Copy of Tool
+                        Save Copy of Tool
                     </button>
                 </div>
             </div>
             
             <div class="content-area">
                 <h2 class="section-title">
-                    📈 Feasibility Analysis
+                    Feasibility Analysis
                 </h2>
                 
                 <div id="results-container">
@@ -886,12 +828,12 @@
                         <div class="result-title">Welcome to the Military Deployment Calculator</div>
                         <p>Click "Calculate Feasibility" to analyze your deployment scenario. This tool will provide:</p>
                         <ul style="margin: 15px 0 0 20px; line-height: 1.6;">
-                            <li>✅ Real-time feasibility assessment</li>
-                            <li>📊 Personnel requirement calculations</li>
-                            <li>⏱️ Dwell time compliance verification</li>
-                            <li>📅 24-month timeline visualization</li>
-                            <li>💡 Strategic recommendations</li>
-                            <li>🔗 Easy sharing with colleagues</li>
+                            <li>Real-time feasibility assessment</li>
+                            <li>Personnel requirement calculations</li>
+                            <li>Dwell time compliance verification</li>
+                            <li>36-month timeline visualization with RIP/Travel months</li>
+                            <li>Strategic recommendations</li>
+                            <li>Easy sharing with colleagues</li>
                         </ul>
                     </div>
                 </div>
@@ -920,7 +862,6 @@
         }
         
         function calculateDeployment() {
-            // Get input values
             const authorized = parseInt(document.getElementById('authorized').value);
             const assigned = parseInt(document.getElementById('assigned').value);
             const exempt = parseInt(document.getElementById('exempt').value);
@@ -930,14 +871,11 @@
             const deploymentType = document.getElementById('deployment-type').value;
             const crossTraining = parseFloat(document.getElementById('cross-training').value);
             
-            // Calculate deployable soldiers
             const deployable = assigned - exempt;
-            
-            // Calculate dwell time requirement (2:1 ratio)
             const dwellTime = deploymentLength * 2;
-            const totalCycle = deploymentLength + dwellTime;
+            const ripTravelTime = 1;
+            const totalCycle = deploymentLength + ripTravelTime + dwellTime;
             
-            // Calculate required personnel for sustainable operations
             let requiredPersonnel;
             if (deploymentType === 'staggered') {
                 requiredPersonnel = Math.ceil(deploymentSize * 2 * (totalCycle / deploymentLength));
@@ -945,23 +883,20 @@
                 requiredPersonnel = Math.ceil(deploymentSize * (totalCycle / deploymentLength));
             }
             
-            // Calculate feasibility metrics
             const feasible = deployable >= requiredPersonnel;
             const manningGap = requiredPersonnel - deployable;
             const utilizationRate = (deploymentSize / deployable * 100);
             const maxSustainable = Math.floor(deployable * deploymentLength / totalCycle);
             
-            // Calculate failure point
             let failurePoint = null;
             if (!feasible) {
                 failurePoint = Math.floor(deploymentLength + (deployable * deploymentLength / deploymentSize));
             }
             
-            // Store results for sharing
             currentResults = {
                 authorized, assigned, exempt, deployable, deploymentSize, deploymentLength,
                 overlap, crossTraining, deploymentType, dwellTime, totalCycle, requiredPersonnel,
-                feasible, manningGap, utilizationRate, maxSustainable, failurePoint
+                feasible, manningGap, utilizationRate, maxSustainable, failurePoint, ripTravelTime
             };
             
             displayResults(currentResults);
@@ -972,18 +907,17 @@
         function displayResults(data) {
             const container = document.getElementById('results-container');
             
-            // Determine status
             let statusClass = 'success';
-            let statusIcon = '✅';
+            let statusIcon = 'PASS';
             let statusText = 'FULLY VIABLE';
             
             if (!data.feasible) {
                 statusClass = 'danger';
-                statusIcon = '❌';
+                statusIcon = 'FAIL';
                 statusText = 'NOT FEASIBLE';
             } else if (data.utilizationRate > 80) {
                 statusClass = 'warning';
-                statusIcon = '⚠️';
+                statusIcon = 'WARN';
                 statusText = 'HIGH RISK';
             }
             
@@ -996,7 +930,7 @@
                     </div>
                     
                     <div class="result-card">
-                        <div class="result-title">👥 Personnel Analysis</div>
+                        <div class="result-title">Personnel Analysis</div>
                         <div class="result-value">${data.deployable}</div>
                         <div class="result-label">Deployable Soldiers</div>
                         <div style="margin-top: 10px; font-size: 0.9rem;">
@@ -1008,27 +942,27 @@
                     </div>
                     
                     <div class="result-card">
-                        <div class="result-title">📊 Utilization Rate</div>
+                        <div class="result-title">Utilization Rate</div>
                         <div class="result-value">${data.utilizationRate.toFixed(1)}%</div>
                         <div class="result-label">Force Deployment Ratio</div>
                     </div>
                     
                     <div class="result-card">
-                        <div class="result-title">🎯 Max Sustainable</div>
+                        <div class="result-title">Max Sustainable</div>
                         <div class="result-value">${data.maxSustainable}</div>
                         <div class="result-label">Soldiers per Deployment</div>
                     </div>
                     
                     <div class="result-card">
-                        <div class="result-title">⏱️ Dwell Time</div>
+                        <div class="result-title">Dwell Time</div>
                         <div class="result-value">${data.dwellTime}</div>
                         <div class="result-label">Months (2:1 Ratio)</div>
                     </div>
                     
                     <div class="result-card">
-                        <div class="result-title">🔄 Total Cycle</div>
+                        <div class="result-title">Total Cycle</div>
                         <div class="result-value">${data.totalCycle}</div>
-                        <div class="result-label">Deploy + Dwell Time</div>
+                        <div class="result-label">Deploy + RIP + Dwell</div>
                     </div>
                 </div>
             `;
@@ -1038,79 +972,53 @@
             const container = document.getElementById('timeline-container');
             const totalMonths = 36;
             
-            // Calculate actual deployment groups based on available personnel
             const deployablePersonnel = data.deployable;
             const deploymentSize = data.deploymentSize;
             const totalGroups = Math.floor(deployablePersonnel / deploymentSize);
             const surplusPersonnel = deployablePersonnel % deploymentSize;
             
-            // Calculate cycle timing
             const deploymentLength = data.deploymentLength;
-            const dwellLength = deploymentLength * 2; // 2:1 ratio
-            const totalCycle = deploymentLength + dwellLength;
+            const ripTravelTime = data.ripTravelTime;
+            const dwellLength = data.dwellTime;
+            const totalCycle = deploymentLength + ripTravelTime + dwellLength;
             
             let html = `
                 <div class="timeline-section">
-                    <div class="timeline-title">📅 Deployment Gantt Chart - 36 Month Analysis</div>
+                    <div class="timeline-title">Deployment Timeline - 36 Month Analysis</div>
                     <div class="timeline-subtitle">
-                        ${deployablePersonnel} deployable soldiers → ${totalGroups} groups of ${deploymentSize} 
-                        ${surplusPersonnel > 0 ? `+ ${surplusPersonnel} surplus` : ''}
-                        | Groups start every ${deploymentLength - overlap} months
+                        ${deployablePersonnel} deployable soldiers - ${totalGroups} groups of ${deploymentSize} 
+                        ${surplusPersonnel > 0 ? `+ ${surplusPersonnel} surplus` : ''} | Cycle: ${deploymentLength}mo Deploy + ${ripTravelTime}mo RIP + ${dwellLength}mo Dwell = ${totalCycle}mo
                     </div>
                     <div class="gantt-container">
                         <div class="gantt-header">
                             <div class="gantt-label">Rotation Groups</div>
-                            <div class="gantt-months-container">
-                                <div class="gantt-months-row gantt-months-tens">
+                            <div class="gantt-months">
             `;
             
-            // Create tens row (10, 20, 30)
-            for (let decade = 0; decade < Math.ceil(totalMonths / 10); decade++) {
-                const startMonth = decade * 10 + 1;
-                const endMonth = Math.min((decade + 1) * 10, totalMonths);
-                const span = endMonth - startMonth + 1;
-                
-                if (decade === 0) {
-                    // First decade shows 1-10
-                    html += `<div class="month-header-tens" style="grid-column: span ${span};">Months 1-${endMonth}</div>`;
-                } else {
-                    html += `<div class="month-header-tens" style="grid-column: span ${span};">${startMonth}-${endMonth}</div>`;
-                }
-            }
-            
-            html += `
-                                </div>
-                                <div class="gantt-months-row gantt-months-ones">
-            `;
-            
-            // Create individual month numbers
             for (let month = 1; month <= totalMonths; month++) {
                 html += `<div class="month-header">${month}</div>`;
             }
             
             html += `
-                                </div>
                             </div>
                         </div>
                         <div class="gantt-body">
             `;
             
-            // Generate gantt rows for each actual rotation group
-            for (let group = 1; group <= Math.max(totalGroups, 1); group++) {
-                const isActiveGroup = group <= totalGroups;
-                const groupSize = isActiveGroup ? deploymentSize : 0;
+            for (let group = 1; group <= totalGroups; group++) {
+                const groupSize = deploymentSize;
                 
                 html += `<div class="gantt-row ${group === 1 ? 'primary-group' : ''}">`;
                 html += `<div class="gantt-row-label ${group === 1 ? 'primary-label' : ''}">
                     Group ${group}${group === 1 ? ' (Primary)' : ''}
                     <span class="group-size">${groupSize} soldiers</span>
-                    ${!isActiveGroup ? '<span class="unavailable-text">Insufficient Personnel</span>' : ''}
                 </div>`;
                 html += `<div class="gantt-timeline">`;
                 
-                // Calculate when this group starts based on overlap period
-                // Group 1 starts at month 1, Group 2 starts at deployment length minus overlap, etc.
-                const groupStartMonth = 1 + ((group - 1) * (deploymentLength - overlap));
+                let groupStartMonth = 1;
+                if (group > 1) {
+                    groupStartMonth = 1 + ((group - 1) * (deploymentLength + ripTravelTime));
+                }
                 
                 for (let month = 1; month <= totalMonths; month++) {
                     let barClass = 'gantt-bar';
@@ -1118,39 +1026,36 @@
                     let barColor = '';
                     let barTitle = '';
                     
-                    if (isActiveGroup && month >= groupStartMonth) {
-                        // Calculate position in the deployment cycle
-                        const monthsFromStart = month - groupStartMonth;
-                        const cyclePosition = monthsFromStart % totalCycle;
+                    const monthsSinceStart = month - groupStartMonth;
+                    
+                    if (monthsSinceStart >= 0) {
+                        const cyclePosition = monthsSinceStart % totalCycle;
+                        const cycleNumber = Math.floor(monthsSinceStart / totalCycle) + 1;
                         
                         if (cyclePosition < deploymentLength) {
-                            // Deployment period
                             barClass += ' deployed';
                             barText = 'D';
-                            barColor = group === 1 ? '#c0392b' : '#e74c3c'; // Primary group darker
-                            barTitle = `Month ${month}: Group ${group} Deployed (${groupSize} soldiers)`;
+                            barColor = group === 1 ? '#c0392b' : '#e74c3c';
+                            barTitle = `Month ${month}: Group ${group} Deployed - Cycle ${cycleNumber} (${groupSize} soldiers)`;
+                        } else if (cyclePosition < deploymentLength + ripTravelTime) {
+                            barClass += ' rip-travel';
+                            barText = 'R';
+                            barColor = '#8e44ad';
+                            barTitle = `Month ${month}: Group ${group} RIP/Travel - Cycle ${cycleNumber} (${groupSize} soldiers)`;
                         } else {
-                            // Dwell period
                             barClass += ' dwell';
                             barText = '';
-                            barColor = group === 1 ? '#229954' : '#27ae60'; // Primary group darker
-                            barTitle = `Month ${month}: Group ${group} Dwell Time`;
+                            barColor = group === 1 ? '#229954' : '#27ae60';
+                            barTitle = `Month ${month}: Group ${group} Dwell Time - Cycle ${cycleNumber}`;
                         }
                         
-                        // Highlight if this is the primary group
                         if (group === 1) {
                             barClass += ' primary';
                         }
-                    } else if (isActiveGroup && month < groupStartMonth) {
-                        // Pre-deployment preparation
+                    } else {
                         barClass += ' preparation';
                         barColor = '#95a5a6';
                         barTitle = `Month ${month}: Group ${group} Preparing`;
-                    } else {
-                        // Unavailable
-                        barClass += ' unavailable';
-                        barColor = '#ecf0f1';
-                        barTitle = `Month ${month}: Insufficient personnel for Group ${group}`;
                     }
                     
                     html += `<div class="${barClass}" style="background-color: ${barColor}" title="${barTitle}">${barText}</div>`;
@@ -1159,7 +1064,6 @@
                 html += `</div></div>`;
             }
             
-            // Add surplus personnel row if applicable
             if (surplusPersonnel > 0) {
                 html += `
                     <div class="gantt-row surplus-row">
@@ -1178,10 +1082,9 @@
                 html += `</div></div>`;
             }
             
-            // Add total deployed summary row
             html += `
                         <div class="gantt-row summary-row">
-                            <div class="gantt-row-label summary-label">
+                            <div class="gantt-row-label">
                                 Total Deployed
                                 <span class="group-size">Per month</span>
                             </div>
@@ -1190,32 +1093,50 @@
             
             for (let month = 1; month <= totalMonths; month++) {
                 let deployedCount = 0;
+                let ripTravelCount = 0;
                 
-                // Count deployed personnel across all active groups
                 for (let group = 1; group <= totalGroups; group++) {
-                    const groupStartMonth = 1 + ((group - 1) * (deploymentLength - overlap));
+                    let groupStartMonth = 1;
+                    if (group > 1) {
+                        groupStartMonth = 1 + ((group - 1) * (deploymentLength + ripTravelTime));
+                    }
                     
-                    if (month >= groupStartMonth) {
-                        const monthsFromStart = month - groupStartMonth;
-                        const cyclePosition = monthsFromStart % totalCycle;
+                    const monthsSinceStart = month - groupStartMonth;
+                    
+                    if (monthsSinceStart >= 0) {
+                        const cyclePosition = monthsSinceStart % totalCycle;
                         
                         if (cyclePosition < deploymentLength) {
                             deployedCount += deploymentSize;
+                        } else if (cyclePosition < deploymentLength + ripTravelTime) {
+                            ripTravelCount += deploymentSize;
                         }
                     }
                 }
                 
                 let summaryColor = '#3498db';
-                let summaryText = deployedCount > 0 ? deployedCount.toString() : '';
+                let summaryText = '';
                 
-                if (deployedCount === 0) {
+                if (deployedCount > 0 && ripTravelCount > 0) {
+                    summaryColor = '#e67e22';
+                    summaryText = `${deployedCount}+${ripTravelCount}`;
+                } else if (deployedCount > 0) {
+                    summaryColor = '#e74c3c';
+                    summaryText = deployedCount.toString();
+                } else if (ripTravelCount > 0) {
+                    summaryColor = '#8e44ad';
+                    summaryText = `R${ripTravelCount}`;
+                } else {
                     summaryColor = '#95a5a6';
                     summaryText = '0';
-                } else if (deployedCount < deploymentSize) {
-                    summaryColor = '#f39c12';
                 }
                 
-                html += `<div class="gantt-bar summary" style="background-color: ${summaryColor}" title="Month ${month}: ${deployedCount} total soldiers deployed">${summaryText}</div>`;
+                const totalActive = deployedCount + ripTravelCount;
+                const titleText = totalActive > 0 ? 
+                    `Month ${month}: ${deployedCount} deployed, ${ripTravelCount} RIP/Travel (${totalActive} total active)` :
+                    `Month ${month}: No active deployments`;
+                
+                html += `<div class="gantt-bar summary" style="background-color: ${summaryColor}" title="${titleText}">${summaryText}</div>`;
             }
             
             html += `
@@ -1233,6 +1154,10 @@
                             <span>Other Groups Deployed</span>
                         </div>
                         <div class="legend-item">
+                            <div class="legend-color" style="background: #8e44ad;"></div>
+                            <span>RIP/Travel Month (${ripTravelTime} month)</span>
+                        </div>
+                        <div class="legend-item">
                             <div class="legend-color" style="background: #27ae60;"></div>
                             <span>Dwell Time (${dwellLength} months)</span>
                         </div>
@@ -1241,8 +1166,8 @@
                             <span>Surplus Personnel</span>
                         </div>
                         <div class="legend-item">
-                            <div class="legend-color" style="background: #3498db;"></div>
-                            <span>Total Deployed</span>
+                            <div class="legend-color" style="background: #e67e22;"></div>
+                            <span>Deploy + RIP Overlap</span>
                         </div>
                         <div class="legend-item">
                             <div class="legend-color" style="background: #95a5a6;"></div>
@@ -1252,7 +1177,7 @@
                     
                     <div class="gantt-analysis">
                         <div class="analysis-card">
-                            <h4>📊 Force Structure Analysis</h4>
+                            <h4>Force Structure Analysis</h4>
                             <div class="analysis-grid">
                                 <div class="analysis-item">
                                     <span class="analysis-label">Total Groups:</span>
@@ -1271,20 +1196,12 @@
                                     <span class="analysis-value">${surplusPersonnel} soldiers</span>
                                 </div>
                                 <div class="analysis-item">
-                                    <span class="analysis-label">Group Interval:</span>
-                                    <span class="analysis-value">${deploymentLength - overlap} months</span>
-                                </div>
-                                <div class="analysis-item">
-                                    <span class="analysis-label">Overlap Period:</span>
-                                    <span class="analysis-value">${overlap} months</span>
-                                </div>
-                                <div class="analysis-item">
-                                    <span class="analysis-label">Cycle Length:</span>
-                                    <span class="analysis-value">${totalCycle} months total</span>
+                                    <span class="analysis-label">Full Cycle:</span>
+                                    <span class="analysis-value">${totalCycle} months (${deploymentLength}+${ripTravelTime}+${dwellLength})</span>
                                 </div>
                                 <div class="analysis-item">
                                     <span class="analysis-label">Sustainable:</span>
-                                    <span class="analysis-value">${data.feasible ? '✅ Yes' : '❌ No'}</span>
+                                    <span class="analysis-value">${data.feasible ? 'Yes' : 'No'}</span>
                                 </div>
                             </div>
                         </div>
@@ -1301,31 +1218,33 @@
             
             if (data.feasible && data.utilizationRate < 70) {
                 recommendations = [
-                    '✅ Deployment plan is sustainable and provides operational flexibility',
-                    '📈 Consider this configuration for long-term planning',
-                    '🛡️ Sufficient buffer for unexpected personnel changes',
-                    '⚖️ Excellent work-life balance with proper dwell time'
+                    'Deployment plan is sustainable and provides operational flexibility',
+                    'Consider this configuration for long-term planning',
+                    'Sufficient buffer for unexpected personnel changes',
+                    'Excellent work-life balance with proper dwell time and RIP/Travel period'
                 ];
             } else if (data.feasible && data.utilizationRate >= 70) {
                 recommendations = [
-                    '⚠️ Plan works but operates at high utilization - monitor closely',
-                    `📉 Consider reducing to ${data.maxSustainable} soldiers for better sustainability`,
-                    '🚨 Limited buffer for medical holds or personnel losses',
-                    '📋 Implement robust backup planning for contingencies'
+                    'Plan works but operates at high utilization - monitor closely',
+                    `Consider reducing to ${data.maxSustainable} soldiers for better sustainability`,
+                    'Limited buffer for medical holds or personnel losses',
+                    'Implement robust backup planning for contingencies',
+                    'RIP/Travel month provides some operational buffer'
                 ];
             } else {
                 recommendations = [
-                    '❌ Current manning cannot sustain this deployment requirement',
-                    `🎯 Reduce deployment size to ${data.maxSustainable} soldiers maximum`,
-                    `👥 Request additional ${Math.abs(data.manningGap)} deployable personnel`,
-                    '📞 Negotiate mission requirements with higher command',
-                    `⏰ Consider extending deployment to ${Math.ceil(data.deploymentLength * 1.5)} months`
+                    'Current manning cannot sustain this deployment requirement',
+                    `Reduce deployment size to ${data.maxSustainable} soldiers maximum`,
+                    `Request additional ${Math.abs(data.manningGap)} deployable personnel`,
+                    'Negotiate mission requirements with higher command',
+                    `Consider extending deployment to ${Math.ceil(data.deploymentLength * 1.5)} months`,
+                    'RIP/Travel month increases personnel requirements by approximately 10%'
                 ];
             }
             
             let html = `
                 <div class="recommendations">
-                    <h3>💡 Strategic Recommendations</h3>
+                    <h3>Strategic Recommendations</h3>
                     <ul>
             `;
             
@@ -1370,6 +1289,7 @@ Assigned Soldiers,${data.assigned},Current personnel assigned to unit
 Exempt Soldiers,${data.exempt},Non-deployable personnel
 Deployment Size,${data.deploymentSize},Soldiers needed per deployment
 Deployment Length,${data.deploymentLength},Duration in months
+RIP/Travel Time,${data.ripTravelTime},Relief-in-place and travel month
 Overlap Period,${data.overlap},Handover time in months
 Deployment Type,${data.deploymentType},Strategy used
 Cross Training,${data.crossTraining},Additional training time
@@ -1378,49 +1298,15 @@ CALCULATED RESULTS
 Metric,Value,Status
 Deployable Soldiers,${data.deployable},Available for deployment
 Dwell Time Required,${data.dwellTime},Months (2:1 ratio)
-Total Cycle Time,${data.totalCycle},Deploy + Dwell time
+Total Cycle Time,${data.totalCycle},Deploy + RIP + Dwell time
 Required Personnel,${data.requiredPersonnel},For sustainable ops
 Manning Gap,${data.manningGap},${data.manningGap > 0 ? 'SHORTAGE' : 'SURPLUS'}
 Max Sustainable Size,${data.maxSustainable},Soldiers per deployment
 Utilization Rate,${data.utilizationRate.toFixed(1)}%,Force deployment ratio
 Mission Status,${data.feasible ? 'VIABLE' : 'NOT FEASIBLE'},Overall assessment
 
-TIMELINE SUMMARY
-Month,Rotation,Status,Personnel
-${generateTimelineCSV(data)}
-
 RECOMMENDATIONS
 ${generateRecommendationsText(data)}`;
-        }
-        
-        function generateTimelineCSV(data) {
-            let csv = '';
-            const rotationLength = data.deploymentLength - data.overlap;
-            
-            for (let month = 1; month <= 24; month++) {
-                const rotationNum = Math.ceil(month / rotationLength);
-                const monthInRotation = ((month - 1) % rotationLength) + 1;
-                
-                let status = '';
-                let personnel = 0;
-                
-                if (monthInRotation <= data.deploymentLength) {
-                    if (data.feasible || month <= (data.deployable * data.deploymentLength / data.deploymentSize)) {
-                        status = `Rotation ${rotationNum} Deployed`;
-                        personnel = data.deploymentSize;
-                    } else {
-                        status = 'Mission Failure';
-                        personnel = 0;
-                    }
-                } else {
-                    status = 'Dwell Period';
-                    personnel = 0;
-                }
-                
-                csv += `${month},${rotationNum},${status},${personnel}\n`;
-            }
-            
-            return csv;
         }
         
         function generateRecommendationsText(data) {
@@ -1428,17 +1314,18 @@ ${generateRecommendationsText(data)}`;
                 return `1. Deployment plan is sustainable with good flexibility
 2. Proceed with current configuration
 3. Monitor for any personnel changes
-4. Excellent dwell time compliance`;
+4. Excellent dwell time compliance with RIP/Travel buffer`;
             } else if (data.feasible && data.utilizationRate >= 70) {
                 return `1. High utilization - monitor personnel closely
 2. Consider reducing to ${data.maxSustainable} soldiers
-3. Plan for contingencies
+3. Plan for contingencies during RIP/Travel periods
 4. Limited flexibility for changes`;
             } else {
                 return `1. Reduce deployment to ${data.maxSustainable} soldiers maximum
 2. Request ${Math.abs(data.manningGap)} additional personnel
 3. Negotiate mission requirements
-4. Consider longer deployment cycles`;
+4. Consider longer deployment cycles
+5. RIP/Travel month increases manning requirements`;
             }
         }
         
@@ -1459,7 +1346,7 @@ ${generateRecommendationsText(data)}`;
             const container = document.getElementById('share-container');
             container.innerHTML = `
                 <div class="share-section">
-                    <h3>🔗 Share These Results</h3>
+                    <h3>Share These Results</h3>
                     <p>Copy this URL to share your analysis with colleagues:</p>
                     <div class="url-display" onclick="copyToClipboard(this.textContent)">
                         ${shareUrl}
@@ -1476,7 +1363,6 @@ ${generateRecommendationsText(data)}`;
             navigator.clipboard.writeText(text).then(() => {
                 alert('URL copied to clipboard!');
             }).catch(() => {
-                // Fallback for older browsers
                 const textArea = document.createElement('textarea');
                 textArea.value = text;
                 document.body.appendChild(textArea);
@@ -1502,7 +1388,6 @@ ${generateRecommendationsText(data)}`;
             alert('Calculator saved! You can now share this HTML file with colleagues or host it on any web server.');
         }
         
-        // Load shared data if present in URL
         function loadSharedData() {
             const urlParams = new URLSearchParams(window.location.search);
             const sharedData = urlParams.get('data');
@@ -1511,7 +1396,6 @@ ${generateRecommendationsText(data)}`;
                 try {
                     const data = JSON.parse(atob(decodeURIComponent(sharedData)));
                     
-                    // Populate form with shared data
                     document.getElementById('authorized').value = data.authorized;
                     document.getElementById('assigned').value = data.assigned;
                     document.getElementById('exempt').value = data.exempt;
@@ -1521,15 +1405,13 @@ ${generateRecommendationsText(data)}`;
                     document.getElementById('deployment-type').value = data.deploymentType;
                     document.getElementById('cross-training').value = data.crossTraining;
                     
-                    // Auto-calculate
                     setTimeout(() => {
                         calculateDeployment();
                         
-                        // Show notification
                         const notification = document.createElement('div');
                         notification.innerHTML = `
                             <div style="background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 8px; margin: 20px; text-align: center;">
-                                📥 <strong>Shared Analysis Loaded</strong><br>
+                                <strong>Shared Analysis Loaded</strong><br>
                                 Analysis shared on ${new Date(data.timestamp).toLocaleString()}
                             </div>
                         `;
@@ -1544,14 +1426,12 @@ ${generateRecommendationsText(data)}`;
             }
         }
         
-        // Initialize the application
         window.onload = function() {
             loadSharedData();
             if (!new URLSearchParams(window.location.search).get('data')) {
                 calculateDeployment();
             }
             
-            // Add real-time calculation on input change
             const inputs = ['authorized', 'assigned', 'exempt', 'deployment-size', 'deployment-length', 'overlap', 'cross-training'];
             inputs.forEach(id => {
                 document.getElementById(id).addEventListener('input', debounce(calculateDeployment, 500));
@@ -1560,7 +1440,6 @@ ${generateRecommendationsText(data)}`;
             document.getElementById('deployment-type').addEventListener('change', calculateDeployment);
         };
         
-        // Debounce function for real-time updates
         function debounce(func, wait) {
             let timeout;
             return function executedFunction(...args) {
@@ -1573,5 +1452,3 @@ ${generateRecommendationsText(data)}`;
             };
         }
     </script>
-</body>
-</html>
