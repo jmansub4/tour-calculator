@@ -1,291 +1,13 @@
-<html lang="en"><head>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.13/html-to-image.min.js" integrity="sha512-iZ2ORl595Wx6miw+GuadDet4WQbdSWS3JLMoNfY8cRGoEFy6oT3G9IbcrBeL6AfkgpA51ETt/faX6yLV+/gFJg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script>
-      (function() {
-        const originalConsole = window.console;
-        window.console = {
-          log: (...args) => {
-            originalConsole.log(...args);
-            window.parent.postMessage({ type: 'console', message: args.join(' ') }, '*');
-          },
-          error: (...args) => {
-            originalConsole.error(...args);
-            window.parent.postMessage({ type: 'console', message: 'Error: ' + args.join(' ') }, '*');
-          },
-          warn: (...args) => {
-            originalConsole.warn(...args);
-            window.parent.postMessage({ type: 'console', message: 'Warning: ' + args.join(' ') }, '*');
-          }
-        };
-
-        let requestId = 0;
-        let callbacksMap = new Map();
-        let streamControllers = new Map();
-        
-        window.claude = {
-          complete: (prompt) => {
-            return new Promise((resolve, reject) => {
-              const id = requestId++;
-              callbacksMap.set(id, { resolve, reject });
-              window.parent.postMessage({ type: 'claudeComplete', id, prompt }, '*');
-            });
-          }
-        };
-
-        window.storage = {
-          get: (key, shared = false) => {
-            return new Promise((resolve, reject) => {
-              const id = requestId++;
-              callbacksMap.set(id, { resolve, reject });
-              window.parent.postMessage({ type: 'storageGet', id, key, shared }, '*');
-            });
-          },
-          set: (key, value, shared = false) => {
-            return new Promise((resolve, reject) => {
-              const id = requestId++;
-              callbacksMap.set(id, { resolve, reject });
-              window.parent.postMessage({ type: 'storageSet', id, key, value, shared }, '*');
-            });
-          },
-          delete: (key, shared = false) => {
-            return new Promise((resolve, reject) => {
-              const id = requestId++;
-              callbacksMap.set(id, { resolve, reject });
-              window.parent.postMessage({ type: 'storageDelete', id, key, shared }, '*');
-            });
-          },
-          list: (prefix, shared = false) => {
-            return new Promise((resolve, reject) => {
-              const id = requestId++;
-              callbacksMap.set(id, { resolve, reject });
-              window.parent.postMessage({ type: 'storageList', id, prefix, shared }, '*');
-            });
-          }
-        };
-
-        let pendingBlobs = new Map();
-        URL.createObjectURL = (blob) => {
-          // Store the blob and create an ID and URL for it
-          const blobId = `blob-${Date.now()}-${Math.random()}`;
-          pendingBlobs.set(blobId, blob);
-          return `blob-request://${blobId}`;
-        };
-
-        URL.revokeObjectURL = (url) => {
-          // Remove the blob from our store
-          const blobId = url.replace("blob-request://", "");
-          pendingBlobs.delete(blobId);
-        };
-
-        const getBlobFromURL = (url) => {
-          const blobId = url.replace("blob-request://", "");
-          return pendingBlobs.get(blobId);
-        };
-
-        // Override global fetch with streaming support
-        window.fetch = (url, init = {}) => {
-          return new Promise((resolve, reject) => {
-            const id = requestId++;
-            const channelId = `fetch-${id}-${Date.now()}`;
-            
-            callbacksMap.set(id, { 
-              resolve: (response) => {
-                // Create a ReadableStream for the response body
-                const stream = new ReadableStream({
-                  start(controller) {
-                    streamControllers.set(channelId, controller);
-                  },
-                  cancel() {
-                    streamControllers.delete(channelId);
-                  }
-                });
-                
-                // Create and return the Response with the stream
-                resolve(new Response(stream, {
-                  status: response.status,
-                  statusText: response.statusText,
-                  headers: response.headers
-                }));
-              },
-              reject,
-              channelId
-            });
-            
-            window.parent.postMessage({
-              type: 'proxyFetch',
-              id,
-              url,
-              init,
-              channelId
-            }, '*');
-          });
-        };
-
-        window.addEventListener('message', async (event) => {
-          if (event.data.type === 'takeScreenshot') {
-            const rootElement = document.getElementById('artifacts-component-root-html');
-            if (!rootElement) {
-              window.parent.postMessage({
-                type: 'screenshotError',
-                error: new Error('Root element not found'),
-              }, '*');
-            }
-            const screenshot = await htmlToImage.toPng(rootElement, {
-              imagePlaceholder:
-                "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAA1JREFUGFdjePDgwX8ACOQDoNsk0PMAAAAASUVORK5CYII=",
-            });
-            window.parent.postMessage({
-              type: 'screenshotData',
-              data: screenshot,
-            }, '*');
-          } else if (event.data.type === 'claudeComplete') {
-            const callback = callbacksMap.get(event.data.id);
-            if (event.data.error) {
-              callback.reject(new Error(event.data.error));
-            } else {
-              callback.resolve(event.data.completion);
-            }
-            callbacksMap.delete(event.data.id);
-          } else if (event.data.type === 'proxyFetchResponse') {
-            const callback = callbacksMap.get(event.data.id);
-            if (event.data.error) {
-              callback.reject(new Error(event.data.error));
-              callbacksMap.delete(event.data.id);
-            } else {
-              // Initial response with headers, status, etc.
-              callback.resolve({
-                status: event.data.status,
-                statusText: event.data.statusText,
-                headers: event.data.headers
-              });
-              // Don't delete the callback yet if streaming
-              if (!event.data.body) {
-                callbacksMap.delete(event.data.id);
-              }
-            }
-          } else if (event.data.type === 'proxyFetchStream') {
-            // Handle streaming data chunks
-            const controller = streamControllers.get(event.data.channelId);
-            if (controller) {
-              if (event.data.error) {
-                controller.error(new Error(event.data.error));
-                streamControllers.delete(event.data.channelId);
-              } else if (event.data.done) {
-                controller.close();
-                streamControllers.delete(event.data.channelId);
-                // Clean up the callback
-                const callback = Array.from(callbacksMap.entries()).find(
-                  ([_, value]) => value.channelId === event.data.channelId
-                );
-                if (callback) {
-                  callbacksMap.delete(callback[0]);
-                }
-              } else if (event.data.chunk) {
-                controller.enqueue(new Uint8Array(event.data.chunk));
-              }
-            }
-          } else if (event.data.type === 'storageGet') {
-            const callback = callbacksMap.get(event.data.id);
-            if (event.data.error) {
-              callback.reject(new Error(event.data.error));
-            } else {
-              callback.resolve(event.data.result);
-            }
-            callbacksMap.delete(event.data.id);
-          } else if (event.data.type === 'storageSet') {
-            const callback = callbacksMap.get(event.data.id);
-            if (event.data.error) {
-              callback.reject(new Error(event.data.error));
-            } else {
-              callback.resolve(event.data.result);
-            }
-            callbacksMap.delete(event.data.id);
-          } else if (event.data.type === 'storageDelete') {
-            const callback = callbacksMap.get(event.data.id);
-            if (event.data.error) {
-              callback.reject(new Error(event.data.error));
-            } else {
-              callback.resolve(event.data.result);
-            }
-            callbacksMap.delete(event.data.id);
-          } else if (event.data.type === 'storageList') {
-            const callback = callbacksMap.get(event.data.id);
-            if (event.data.error) {
-              callback.reject(new Error(event.data.error));
-            } else {
-              callback.resolve(event.data.result);
-            }
-            callbacksMap.delete(event.data.id);
-          }
-        });
-
-        window.addEventListener('click', (event) => {
-          const isEl = event.target instanceof HTMLElement;
-          if (!isEl) return;
-    
-          // find ancestor links
-          const linkEl = event.target.closest("a");
-          if (!linkEl || !linkEl.href) return;
-    
-          event.preventDefault();
-          event.stopImmediatePropagation();
-    
-          if (linkEl.href.startsWith("blob-request:")) {
-            const blob = getBlobFromURL(linkEl.href);
-            if (!blob) return;
-            void blob.arrayBuffer().then((data) => {
-              window.parent.postMessage({
-                type: "downloadFile",
-                filename: linkEl.download,
-                data,
-                mimeType: blob.type || "application/octet-stream",
-              });
-            });
-          } else if (linkEl.href.startsWith("data:")) {
-            const [header, base64Data] = linkEl.href.split(",");
-            const mimeMatch = header.match(/data:([^;]+)/);
-            const mimeType = mimeMatch ? mimeMatch[1] : "application/octet-stream";
-            const binaryString = atob(base64Data);
-            const data = Uint8Array.from(binaryString, (c) =>
-              c.charCodeAt(0),
-            ).buffer;
-            window.parent.postMessage({
-              type: "downloadFile",
-              filename: linkEl.download,
-              data,
-              mimeType,
-            });
-          } else {
-            let linkUrl;
-            try {
-              linkUrl = new URL(linkEl.href);
-            } catch (error) {
-              return;
-            }
-    
-            if (linkUrl.hostname === window.location.hostname) return;
-      
-            window.parent.postMessage({
-              type: 'openExternal',
-              href: linkEl.href,
-            }, '*');
-          }
-      });
-
-        const originalOpen = window.open;
-        window.open = function (url) {
-          window.parent.postMessage({
-            type: "openExternal",
-            href: url,
-          }, "*");
-        };
-
-        window.addEventListener('error', (event) => {
-          window.parent.postMessage({ type: 'console', message: 'Uncaught Error: ' + event.message }, '*');
-        });
-      })();
-    </script>
-  
+.gantt-label {
+            padding: 12px;
+            background: #34495e;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+        }<!DOCTYPE html>
+<html lang="en">
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Military Deployment Feasibility Calculator</title>
@@ -1056,7 +778,7 @@
         }
     </style>
 </head>
-<body id="artifacts-component-root-html" data-new-gr-c-s-check-loaded="14.1250.0" data-gr-ext-installed="">
+<body>
     <div class="container">
         <div class="header">
             <div class="header-content">
@@ -1160,179 +882,22 @@
                 </h2>
                 
                 <div id="results-container">
-                <div class="results-grid">
-                    <div class="result-card success">
-                        <div class="result-title">✅ Mission Status</div>
-                        <div class="status-badge success">FULLY VIABLE</div>
-                        <div class="result-label">Overall Assessment</div>
-                    </div>
-                    
                     <div class="result-card">
-                        <div class="result-title">👥 Personnel Analysis</div>
-                        <div class="result-value">55</div>
-                        <div class="result-label">Deployable Soldiers</div>
-                        <div style="margin-top: 10px; font-size: 0.9rem;">
-                            Required: <strong>30</strong> | 
-                            Gap: <strong style="color: #27ae60">
-                                +25
-                            </strong>
-                        </div>
-                    </div>
-                    
-                    <div class="result-card">
-                        <div class="result-title">📊 Utilization Rate</div>
-                        <div class="result-value">18.2%</div>
-                        <div class="result-label">Force Deployment Ratio</div>
-                    </div>
-                    
-                    <div class="result-card">
-                        <div class="result-title">🎯 Max Sustainable</div>
-                        <div class="result-value">18</div>
-                        <div class="result-label">Soldiers per Deployment</div>
-                    </div>
-                    
-                    <div class="result-card">
-                        <div class="result-title">⏱️ Dwell Time</div>
-                        <div class="result-value">12</div>
-                        <div class="result-label">Months (2:1 Ratio)</div>
-                    </div>
-                    
-                    <div class="result-card">
-                        <div class="result-title">🔄 Total Cycle</div>
-                        <div class="result-value">18</div>
-                        <div class="result-label">Deploy + Dwell Time</div>
+                        <div class="result-title">Welcome to the Military Deployment Calculator</div>
+                        <p>Click "Calculate Feasibility" to analyze your deployment scenario. This tool will provide:</p>
+                        <ul style="margin: 15px 0 0 20px; line-height: 1.6;">
+                            <li>✅ Real-time feasibility assessment</li>
+                            <li>📊 Personnel requirement calculations</li>
+                            <li>⏱️ Dwell time compliance verification</li>
+                            <li>📅 24-month timeline visualization</li>
+                            <li>💡 Strategic recommendations</li>
+                            <li>🔗 Easy sharing with colleagues</li>
+                        </ul>
                     </div>
                 </div>
-            </div>
                 
-                <div id="timeline-container">
-                <div class="timeline-section">
-                    <div class="timeline-title">📅 Deployment Gantt Chart - 36 Month Analysis</div>
-                    <div class="timeline-subtitle">
-                        55 deployable soldiers → 5 groups of 10 
-                        + 5 surplus
-                    </div>
-                    <div class="gantt-container">
-                        <div class="gantt-header">
-                            <div class="gantt-label">Rotation Groups</div>
-                            <div class="gantt-months-container">
-                                <div class="gantt-months-row gantt-months-tens">
-            <div class="month-header-tens" style="grid-column: span 10;">Months 1-10</div><div class="month-header-tens" style="grid-column: span 10;">11-20</div><div class="month-header-tens" style="grid-column: span 10;">21-30</div><div class="month-header-tens" style="grid-column: span 6;">31-36</div>
-                                </div>
-                                <div class="gantt-months-row gantt-months-ones">
-            <div class="month-header">1</div><div class="month-header">2</div><div class="month-header">3</div><div class="month-header">4</div><div class="month-header">5</div><div class="month-header">6</div><div class="month-header">7</div><div class="month-header">8</div><div class="month-header">9</div><div class="month-header">10</div><div class="month-header">11</div><div class="month-header">12</div><div class="month-header">13</div><div class="month-header">14</div><div class="month-header">15</div><div class="month-header">16</div><div class="month-header">17</div><div class="month-header">18</div><div class="month-header">19</div><div class="month-header">20</div><div class="month-header">21</div><div class="month-header">22</div><div class="month-header">23</div><div class="month-header">24</div><div class="month-header">25</div><div class="month-header">26</div><div class="month-header">27</div><div class="month-header">28</div><div class="month-header">29</div><div class="month-header">30</div><div class="month-header">31</div><div class="month-header">32</div><div class="month-header">33</div><div class="month-header">34</div><div class="month-header">35</div><div class="month-header">36</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="gantt-body">
-            <div class="gantt-row primary-group"><div class="gantt-row-label primary-label">
-                    Group 1 (Primary)
-                    <span class="group-size">10 soldiers</span>
-                    
-                </div><div class="gantt-timeline"><div class="gantt-bar deployed primary" style="background-color: #c0392b" title="Month 1: Group 1 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed primary" style="background-color: #c0392b" title="Month 2: Group 1 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed primary" style="background-color: #c0392b" title="Month 3: Group 1 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed primary" style="background-color: #c0392b" title="Month 4: Group 1 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed primary" style="background-color: #c0392b" title="Month 5: Group 1 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed primary" style="background-color: #c0392b" title="Month 6: Group 1 Deployed (10 soldiers)">D</div><div class="gantt-bar dwell primary" style="background-color: #229954" title="Month 7: Group 1 Dwell Time"></div><div class="gantt-bar dwell primary" style="background-color: #229954" title="Month 8: Group 1 Dwell Time"></div><div class="gantt-bar dwell primary" style="background-color: #229954" title="Month 9: Group 1 Dwell Time"></div><div class="gantt-bar dwell primary" style="background-color: #229954" title="Month 10: Group 1 Dwell Time"></div><div class="gantt-bar dwell primary" style="background-color: #229954" title="Month 11: Group 1 Dwell Time"></div><div class="gantt-bar dwell primary" style="background-color: #229954" title="Month 12: Group 1 Dwell Time"></div><div class="gantt-bar dwell primary" style="background-color: #229954" title="Month 13: Group 1 Dwell Time"></div><div class="gantt-bar dwell primary" style="background-color: #229954" title="Month 14: Group 1 Dwell Time"></div><div class="gantt-bar dwell primary" style="background-color: #229954" title="Month 15: Group 1 Dwell Time"></div><div class="gantt-bar dwell primary" style="background-color: #229954" title="Month 16: Group 1 Dwell Time"></div><div class="gantt-bar dwell primary" style="background-color: #229954" title="Month 17: Group 1 Dwell Time"></div><div class="gantt-bar dwell primary" style="background-color: #229954" title="Month 18: Group 1 Dwell Time"></div><div class="gantt-bar deployed primary" style="background-color: #c0392b" title="Month 19: Group 1 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed primary" style="background-color: #c0392b" title="Month 20: Group 1 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed primary" style="background-color: #c0392b" title="Month 21: Group 1 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed primary" style="background-color: #c0392b" title="Month 22: Group 1 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed primary" style="background-color: #c0392b" title="Month 23: Group 1 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed primary" style="background-color: #c0392b" title="Month 24: Group 1 Deployed (10 soldiers)">D</div><div class="gantt-bar dwell primary" style="background-color: #229954" title="Month 25: Group 1 Dwell Time"></div><div class="gantt-bar dwell primary" style="background-color: #229954" title="Month 26: Group 1 Dwell Time"></div><div class="gantt-bar dwell primary" style="background-color: #229954" title="Month 27: Group 1 Dwell Time"></div><div class="gantt-bar dwell primary" style="background-color: #229954" title="Month 28: Group 1 Dwell Time"></div><div class="gantt-bar dwell primary" style="background-color: #229954" title="Month 29: Group 1 Dwell Time"></div><div class="gantt-bar dwell primary" style="background-color: #229954" title="Month 30: Group 1 Dwell Time"></div><div class="gantt-bar dwell primary" style="background-color: #229954" title="Month 31: Group 1 Dwell Time"></div><div class="gantt-bar dwell primary" style="background-color: #229954" title="Month 32: Group 1 Dwell Time"></div><div class="gantt-bar dwell primary" style="background-color: #229954" title="Month 33: Group 1 Dwell Time"></div><div class="gantt-bar dwell primary" style="background-color: #229954" title="Month 34: Group 1 Dwell Time"></div><div class="gantt-bar dwell primary" style="background-color: #229954" title="Month 35: Group 1 Dwell Time"></div><div class="gantt-bar dwell primary" style="background-color: #229954" title="Month 36: Group 1 Dwell Time"></div></div></div><div class="gantt-row "><div class="gantt-row-label ">
-                    Group 2
-                    <span class="group-size">10 soldiers</span>
-                    
-                </div><div class="gantt-timeline"><div class="gantt-bar preparation" style="background-color: #95a5a6" title="Month 1: Group 2 Preparing"></div><div class="gantt-bar preparation" style="background-color: #95a5a6" title="Month 2: Group 2 Preparing"></div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 3: Group 2 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 4: Group 2 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 5: Group 2 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 6: Group 2 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 7: Group 2 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 8: Group 2 Deployed (10 soldiers)">D</div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 9: Group 2 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 10: Group 2 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 11: Group 2 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 12: Group 2 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 13: Group 2 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 14: Group 2 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 15: Group 2 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 16: Group 2 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 17: Group 2 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 18: Group 2 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 19: Group 2 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 20: Group 2 Dwell Time"></div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 21: Group 2 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 22: Group 2 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 23: Group 2 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 24: Group 2 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 25: Group 2 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 26: Group 2 Deployed (10 soldiers)">D</div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 27: Group 2 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 28: Group 2 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 29: Group 2 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 30: Group 2 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 31: Group 2 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 32: Group 2 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 33: Group 2 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 34: Group 2 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 35: Group 2 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 36: Group 2 Dwell Time"></div></div></div><div class="gantt-row "><div class="gantt-row-label ">
-                    Group 3
-                    <span class="group-size">10 soldiers</span>
-                    
-                </div><div class="gantt-timeline"><div class="gantt-bar preparation" style="background-color: #95a5a6" title="Month 1: Group 3 Preparing"></div><div class="gantt-bar preparation" style="background-color: #95a5a6" title="Month 2: Group 3 Preparing"></div><div class="gantt-bar preparation" style="background-color: #95a5a6" title="Month 3: Group 3 Preparing"></div><div class="gantt-bar preparation" style="background-color: #95a5a6" title="Month 4: Group 3 Preparing"></div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 5: Group 3 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 6: Group 3 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 7: Group 3 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 8: Group 3 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 9: Group 3 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 10: Group 3 Deployed (10 soldiers)">D</div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 11: Group 3 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 12: Group 3 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 13: Group 3 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 14: Group 3 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 15: Group 3 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 16: Group 3 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 17: Group 3 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 18: Group 3 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 19: Group 3 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 20: Group 3 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 21: Group 3 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 22: Group 3 Dwell Time"></div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 23: Group 3 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 24: Group 3 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 25: Group 3 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 26: Group 3 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 27: Group 3 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 28: Group 3 Deployed (10 soldiers)">D</div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 29: Group 3 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 30: Group 3 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 31: Group 3 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 32: Group 3 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 33: Group 3 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 34: Group 3 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 35: Group 3 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 36: Group 3 Dwell Time"></div></div></div><div class="gantt-row "><div class="gantt-row-label ">
-                    Group 4
-                    <span class="group-size">10 soldiers</span>
-                    
-                </div><div class="gantt-timeline"><div class="gantt-bar preparation" style="background-color: #95a5a6" title="Month 1: Group 4 Preparing"></div><div class="gantt-bar preparation" style="background-color: #95a5a6" title="Month 2: Group 4 Preparing"></div><div class="gantt-bar preparation" style="background-color: #95a5a6" title="Month 3: Group 4 Preparing"></div><div class="gantt-bar preparation" style="background-color: #95a5a6" title="Month 4: Group 4 Preparing"></div><div class="gantt-bar preparation" style="background-color: #95a5a6" title="Month 5: Group 4 Preparing"></div><div class="gantt-bar preparation" style="background-color: #95a5a6" title="Month 6: Group 4 Preparing"></div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 7: Group 4 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 8: Group 4 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 9: Group 4 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 10: Group 4 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 11: Group 4 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 12: Group 4 Deployed (10 soldiers)">D</div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 13: Group 4 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 14: Group 4 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 15: Group 4 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 16: Group 4 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 17: Group 4 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 18: Group 4 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 19: Group 4 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 20: Group 4 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 21: Group 4 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 22: Group 4 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 23: Group 4 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 24: Group 4 Dwell Time"></div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 25: Group 4 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 26: Group 4 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 27: Group 4 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 28: Group 4 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 29: Group 4 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 30: Group 4 Deployed (10 soldiers)">D</div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 31: Group 4 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 32: Group 4 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 33: Group 4 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 34: Group 4 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 35: Group 4 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 36: Group 4 Dwell Time"></div></div></div><div class="gantt-row "><div class="gantt-row-label ">
-                    Group 5
-                    <span class="group-size">10 soldiers</span>
-                    
-                </div><div class="gantt-timeline"><div class="gantt-bar preparation" style="background-color: #95a5a6" title="Month 1: Group 5 Preparing"></div><div class="gantt-bar preparation" style="background-color: #95a5a6" title="Month 2: Group 5 Preparing"></div><div class="gantt-bar preparation" style="background-color: #95a5a6" title="Month 3: Group 5 Preparing"></div><div class="gantt-bar preparation" style="background-color: #95a5a6" title="Month 4: Group 5 Preparing"></div><div class="gantt-bar preparation" style="background-color: #95a5a6" title="Month 5: Group 5 Preparing"></div><div class="gantt-bar preparation" style="background-color: #95a5a6" title="Month 6: Group 5 Preparing"></div><div class="gantt-bar preparation" style="background-color: #95a5a6" title="Month 7: Group 5 Preparing"></div><div class="gantt-bar preparation" style="background-color: #95a5a6" title="Month 8: Group 5 Preparing"></div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 9: Group 5 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 10: Group 5 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 11: Group 5 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 12: Group 5 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 13: Group 5 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 14: Group 5 Deployed (10 soldiers)">D</div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 15: Group 5 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 16: Group 5 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 17: Group 5 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 18: Group 5 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 19: Group 5 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 20: Group 5 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 21: Group 5 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 22: Group 5 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 23: Group 5 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 24: Group 5 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 25: Group 5 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 26: Group 5 Dwell Time"></div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 27: Group 5 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 28: Group 5 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 29: Group 5 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 30: Group 5 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 31: Group 5 Deployed (10 soldiers)">D</div><div class="gantt-bar deployed" style="background-color: #e74c3c" title="Month 32: Group 5 Deployed (10 soldiers)">D</div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 33: Group 5 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 34: Group 5 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 35: Group 5 Dwell Time"></div><div class="gantt-bar dwell" style="background-color: #27ae60" title="Month 36: Group 5 Dwell Time"></div></div></div>
-                    <div class="gantt-row surplus-row">
-                        <div class="gantt-row-label surplus-label">
-                            Surplus Personnel
-                            <span class="group-size">5 soldiers</span>
-                            <span class="surplus-text">Available for contingency</span>
-                        </div>
-                        <div class="gantt-timeline">
-                <div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 1: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 2: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 3: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 4: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 5: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 6: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 7: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 8: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 9: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 10: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 11: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 12: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 13: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 14: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 15: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 16: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 17: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 18: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 19: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 20: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 21: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 22: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 23: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 24: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 25: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 26: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 27: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 28: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 29: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 30: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 31: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 32: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 33: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 34: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 35: 5 surplus personnel available">S</div><div class="gantt-bar surplus" style="background-color: #f39c12" title="Month 36: 5 surplus personnel available">S</div></div></div>
-                        <div class="gantt-row summary-row">
-                            <div class="gantt-row-label summary-label">
-                                Total Deployed
-                                <span class="group-size">Per month</span>
-                            </div>
-                            <div class="gantt-timeline">
-            <div class="gantt-bar summary" style="background-color: #3498db" title="Month 1: 10 total soldiers deployed">10</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 2: 10 total soldiers deployed">10</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 3: 20 total soldiers deployed">20</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 4: 20 total soldiers deployed">20</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 5: 30 total soldiers deployed">30</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 6: 30 total soldiers deployed">30</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 7: 30 total soldiers deployed">30</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 8: 30 total soldiers deployed">30</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 9: 30 total soldiers deployed">30</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 10: 30 total soldiers deployed">30</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 11: 20 total soldiers deployed">20</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 12: 20 total soldiers deployed">20</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 13: 10 total soldiers deployed">10</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 14: 10 total soldiers deployed">10</div><div class="gantt-bar summary" style="background-color: #95a5a6" title="Month 15: 0 total soldiers deployed">0</div><div class="gantt-bar summary" style="background-color: #95a5a6" title="Month 16: 0 total soldiers deployed">0</div><div class="gantt-bar summary" style="background-color: #95a5a6" title="Month 17: 0 total soldiers deployed">0</div><div class="gantt-bar summary" style="background-color: #95a5a6" title="Month 18: 0 total soldiers deployed">0</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 19: 10 total soldiers deployed">10</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 20: 10 total soldiers deployed">10</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 21: 20 total soldiers deployed">20</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 22: 20 total soldiers deployed">20</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 23: 30 total soldiers deployed">30</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 24: 30 total soldiers deployed">30</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 25: 30 total soldiers deployed">30</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 26: 30 total soldiers deployed">30</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 27: 30 total soldiers deployed">30</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 28: 30 total soldiers deployed">30</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 29: 20 total soldiers deployed">20</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 30: 20 total soldiers deployed">20</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 31: 10 total soldiers deployed">10</div><div class="gantt-bar summary" style="background-color: #3498db" title="Month 32: 10 total soldiers deployed">10</div><div class="gantt-bar summary" style="background-color: #95a5a6" title="Month 33: 0 total soldiers deployed">0</div><div class="gantt-bar summary" style="background-color: #95a5a6" title="Month 34: 0 total soldiers deployed">0</div><div class="gantt-bar summary" style="background-color: #95a5a6" title="Month 35: 0 total soldiers deployed">0</div><div class="gantt-bar summary" style="background-color: #95a5a6" title="Month 36: 0 total soldiers deployed">0</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="gantt-legend">
-                        <div class="legend-item">
-                            <div class="legend-color" style="background: #c0392b;"></div>
-                            <span>Primary Group Deployed</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-color" style="background: #e74c3c;"></div>
-                            <span>Other Groups Deployed</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-color" style="background: #27ae60;"></div>
-                            <span>Dwell Time (12 months)</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-color" style="background: #f39c12;"></div>
-                            <span>Surplus Personnel</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-color" style="background: #3498db;"></div>
-                            <span>Total Deployed</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-color" style="background: #95a5a6;"></div>
-                            <span>Preparation/Unavailable</span>
-                        </div>
-                    </div>
-                    
-                    <div class="gantt-analysis">
-                        <div class="analysis-card">
-                            <h4>📊 Force Structure Analysis</h4>
-                            <div class="analysis-grid">
-                                <div class="analysis-item">
-                                    <span class="analysis-label">Total Groups:</span>
-                                    <span class="analysis-value">5 complete groups</span>
-                                </div>
-                                <div class="analysis-item">
-                                    <span class="analysis-label">Group Size:</span>
-                                    <span class="analysis-value">10 soldiers each</span>
-                                </div>
-                                <div class="analysis-item">
-                                    <span class="analysis-label">Personnel Used:</span>
-                                    <span class="analysis-value">50 of 55</span>
-                                </div>
-                                <div class="analysis-item">
-                                    <span class="analysis-label">Surplus:</span>
-                                    <span class="analysis-value">5 soldiers</span>
-                                </div>
-                                <div class="analysis-item">
-                                    <span class="analysis-label">Cycle Length:</span>
-                                    <span class="analysis-value">18 months total</span>
-                                </div>
-                                <div class="analysis-item">
-                                    <span class="analysis-label">Sustainable:</span>
-                                    <span class="analysis-value">✅ Yes</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div></div>
-                <div id="recommendations-container">
-                <div class="recommendations">
-                    <h3>💡 Strategic Recommendations</h3>
-                    <ul>
-            <li>✅ Deployment plan is sustainable and provides operational flexibility</li><li>📈 Consider this configuration for long-term planning</li><li>🛡️ Sufficient buffer for unexpected personnel changes</li><li>⚖️ Excellent work-life balance with proper dwell time</li>
-                    </ul>
-                </div>
-            </div>
+                <div id="timeline-container"></div>
+                <div id="recommendations-container"></div>
                 <div id="share-container"></div>
             </div>
         </div>
@@ -1490,6 +1055,7 @@
                     <div class="timeline-subtitle">
                         ${deployablePersonnel} deployable soldiers → ${totalGroups} groups of ${deploymentSize} 
                         ${surplusPersonnel > 0 ? `+ ${surplusPersonnel} surplus` : ''}
+                        | Groups start every ${deploymentLength - overlap} months
                     </div>
                     <div class="gantt-container">
                         <div class="gantt-header">
@@ -1542,8 +1108,9 @@
                 </div>`;
                 html += `<div class="gantt-timeline">`;
                 
-                // Calculate when this group starts (staggered start)
-                const groupStartMonth = 1 + ((group - 1) * Math.ceil(deploymentLength / totalGroups));
+                // Calculate when this group starts based on overlap period
+                // Group 1 starts at month 1, Group 2 starts at deployment length minus overlap, etc.
+                const groupStartMonth = 1 + ((group - 1) * (deploymentLength - overlap));
                 
                 for (let month = 1; month <= totalMonths; month++) {
                     let barClass = 'gantt-bar';
@@ -1626,7 +1193,7 @@
                 
                 // Count deployed personnel across all active groups
                 for (let group = 1; group <= totalGroups; group++) {
-                    const groupStartMonth = 1 + ((group - 1) * Math.ceil(deploymentLength / totalGroups));
+                    const groupStartMonth = 1 + ((group - 1) * (deploymentLength - overlap));
                     
                     if (month >= groupStartMonth) {
                         const monthsFromStart = month - groupStartMonth;
@@ -1702,6 +1269,14 @@
                                 <div class="analysis-item">
                                     <span class="analysis-label">Surplus:</span>
                                     <span class="analysis-value">${surplusPersonnel} soldiers</span>
+                                </div>
+                                <div class="analysis-item">
+                                    <span class="analysis-label">Group Interval:</span>
+                                    <span class="analysis-value">${deploymentLength - overlap} months</span>
+                                </div>
+                                <div class="analysis-item">
+                                    <span class="analysis-label">Overlap Period:</span>
+                                    <span class="analysis-value">${overlap} months</span>
                                 </div>
                                 <div class="analysis-item">
                                     <span class="analysis-label">Cycle Length:</span>
@@ -1998,5 +1573,5 @@ ${generateRecommendationsText(data)}`;
             };
         }
     </script>
-
-</body><grammarly-desktop-integration data-grammarly-shadow-root="true"></grammarly-desktop-integration></html>
+</body>
+</html>
